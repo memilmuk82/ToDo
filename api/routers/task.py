@@ -30,9 +30,12 @@ async def list_tasks():
 # 새로운 할 일 추가 기능 (POST 방식)
 # 예: 사용자가 할 일을 작성해서 보내면 서버에 저장하도록 준비
 # ------------------------------------------------------------
-@router.post("/tasks")
-async def create_task():
-    pass
+@router.post("/tasks", response_model=task_schema.TaskCreateResponse)
+# task_body: 클라이언트가 보낸 할 일 데이터 (title만 있음)
+# TaskCreateResponse: 저장된 결과로 id를 포함해 응답
+async def create_task(task_body: task_schema.TaskCreate):
+    return task_schema.TaskCreateResponse(id=1, **task_body.dict())
+    # DB가 없으므로 임시로 id=1을 부여하고, 받은 데이터를 그대로 반환
 
 # ------------------------------------------------------------
 # 할 일 수정 기능 (PUT 방식)
@@ -40,7 +43,7 @@ async def create_task():
 # ------------------------------------------------------------
 @router.put("/tasks/{task_id}")
 async def update_task():
-    pass
+    pass  # 추후 구현 예정
 
 # ------------------------------------------------------------
 # 할 일 삭제 기능 (DELETE 방식)
@@ -48,4 +51,4 @@ async def update_task():
 # ------------------------------------------------------------
 @router.delete("/tasks/{task_id}")
 async def delete_task():
-    pass
+    pass  # 추후 구현 예정
