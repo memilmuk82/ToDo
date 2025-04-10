@@ -22,3 +22,11 @@ class Task(BaseModel):  # '할 일'을 표현할 수 있는 Task라는 틀을 �
         description="True면 완료, False면 미완료"  # 무슨 뜻인지 설명해준다.
     )
     # done: 이 할 일이 끝났는지를 표시하는 값 (True 또는 False만 가능함)
+
+class TaskBase(BaseModel):
+    title: str | None = Field(
+        None,
+        examples=["세탁소에 맡긴 것을 찾으러 가기"]
+    )
+
+class Task
