@@ -1,55 +1,65 @@
 # ------------------------------------------------------------
-# 할 일 기능을 담당하는 파일 (task.py)
-# 이 파일은 /tasks 관련 주소(GET, POST, PUT, DELETE)를 처리한다.
+# 파일명: task.py
+# 위치: api/routers/task.py
+# 이 파일은 "할 일(To-Do)" 기능을 처리하는 API를 담고 있다.
+# - FastAPI의 APIRouter를 사용하여 /tasks로 시작하는 주소들을 정의한다.
+# - 주요 기능: 할 일 목록 조회, 추가, 수정, 삭제 (GET, POST, PUT, DELETE)
 # ------------------------------------------------------------
 
-# FastAPI에서 URL 주소를 모아 관리할 수 있는 도구를 불러온다.
+# * FastAPI에서 URL 경로를 모아서 그룹으로 관리할 수 있도록 도와주는 도구
 from fastapi import APIRouter
 
-# 우리가 만든 Task 데이터 구조를 불러온다.
-# Task 모델은 api/schemas/task.py 파일에 있으며,
-# 어떤 정보(id, title, done)를 담는지 정의되어 있다.
+# * 우리가 만든 데이터 구조(Task 관련 클래스)를 불러온다
+# - 파일 위치: api/schemas/task.py
+# - 이 안에 Task, TaskCreate, TaskCreateResponse 등의 모델이 정의되어 있다.
 import api.schemas.task as task_schema
 
-# router는 여러 기능(API 주소들)을 모아서 저장해두는 상자 같은 역할을 한다.
+# * router 객체를 만든다
+# - 여러 API 기능들을 이 router 안에 담아서 나중에 main.py에서 등록하게 된다.
 router = APIRouter()
 
 # ------------------------------------------------------------
-# 할 일 목록 보기 기능 (GET 방식)
-# 예: /tasks 주소로 접속하면 전체 할 일 목록을 보여준다.
+# [1] 할 일 목록 조회 (GET 요청)
+# - 클라이언트가 /tasks 주소로 요청하면 전체 할 일 목록을 응답한다.
 # ------------------------------------------------------------
 @router.get("/tasks", response_model=list[task_schema.Task])
-# response_model → 응답의 데이터 모양을 정해주는 옵션
-# 여기서는 여러 개의 Task 모델을 리스트 형태로 응답함
+# - response_model: 클라이언트에게 어떤 형태로 응답할지 정의함
+# - 여기서는 Task 모델의 리스트(list)를 반환한다.
 async def list_tasks():
     return [task_schema.Task(id=1, title="첫 번째 ToDo 작업", done=False)]
-    # 실제 DB가 없으므로, 예시 데이터를 직접 만들어 응답으로 보낸다.
-    # task_schema.Task(...) 형태로 모델에 맞춰 값을 채운다.
+    # * 실제 DB 연동 전에는 예시 데이터를 직접 만들어 응답함
+    # * Pydantic 모델(Task)을 직접 사용해서 응답 데이터를 구성함
 
 # ------------------------------------------------------------
-# 새로운 할 일 추가 기능 (POST 방식)
-# 예: 사용자가 할 일을 작성해서 보내면 서버에 저장하도록 준비
+# [2] 할 일 추가 (POST 요청)
+# - 클라이언트가 JSON 형식으로 보낸 데이터를 받아 새로운 할 일을 만든다.
 # ------------------------------------------------------------
 @router.post("/tasks", response_model=task_schema.TaskCreateResponse)
-# task_body: 클라이언트가 보낸 할 일 데이터 (title만 있음)
-# TaskCreateResponse: 저장된 결과로 id를 포함해 응답
+# - task_body: 클라이언트가 보낸 요청 본문 (예: {"title": "책 읽기"})
+# - TaskCreate: 입력용 데이터 모델 (title 필드만 있음)
+# - TaskCreateResponse: 응답용 모델 (id와 title 포함)
 async def create_task(task_body: task_schema.TaskCreate):
     return task_schema.TaskCreateResponse(id=1, **task_body.model_dump())
-    # Pydantic v2 기준: task_body.dict() → task_body.model_dump() 로 변경
+    # * model_dump(): Pydantic v2에서 dict() 대신 사용되는 메서드
+    # * 예시이므로 id는 1로 고정해서 반환
 
 # ------------------------------------------------------------
-# 할 일 수정 기능 (PUT 방식)
-# 예: /tasks/3 → 번호가 3인 할 일의 내용을 바꾼다.
+# [3] 할 일 수정 (PUT 요청)
+# - 특정 번호의 할 일을 수정함 (예: /tasks/3 요청 시, 3번 항목 수정)
 # ------------------------------------------------------------
 @router.put("/tasks/{task_id}", response_model=task_schema.TaskCreateResponse)
+# - task_id: 경로에 포함된 숫자 (수정할 할 일의 고유 번호)
+# - task_body: 수정할 내용 (title만 전달됨)
 async def update_task(task_id: int, task_body: task_schema.TaskCreate):
     return task_schema.TaskCreateResponse(id=task_id, **task_body.model_dump())
-    # Pydantic v2 기준: task_body.dict() → task_body.model_dump() 로 변경
+    # * 수정된 내용과 함께 같은 형식(TaskCreateResponse)으로 응답함
 
 # ------------------------------------------------------------
-# 할 일 삭제 기능 (DELETE 방식)
-# 예: /tasks/3 → 번호가 3인 할 일을 삭제한다.
+# [4] 할 일 삭제 (DELETE 요청)
+# - 특정 번호의 할 일을 삭제함 (예: /tasks/3 요청 시, 3번 항목 삭제)
 # ------------------------------------------------------------
 @router.delete("/tasks/{task_id}")
+# - task_id: 삭제할 할 일의 번호
+# - 별도의 응답 내용은 없음 (204 No Content 형식도 가능)
 async def delete_task(task_id: int):
     return
