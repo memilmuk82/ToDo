@@ -4,17 +4,16 @@
 # 이 파일은 "할 일(To-Do)" 기능을 처리하는 API를 정의한 곳이다.
 # - /tasks로 시작하는 주소들을 FastAPI의 APIRouter로 관리한다.
 # - 주요 기능: 할 일 목록 조회, 할 일 추가, 수정, 삭제
-# - 아직 실제 DB는 연결하지 않고, 예시 데이터를 사용한다.
 # ------------------------------------------------------------
 
 # * FastAPI에서 여러 개의 URL 경로를 그룹으로 묶어 관리할 수 있게 해주는 도구
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 # - APIRouter: 기능별로 URL을 나눠 관리할 수 있게 해줌 (예: /tasks, /users 등)
 # - Depends: 다른 함수(예: DB 연결)를 자동으로 실행하고 주입해주는 도구
 
-# * SQLAlchemy의 동기 세션을 사용하기 위한 도구
-from sqlalchemy.orm import Session
-# - Session: DB와 연결된 작업 단위 (add, commit 등 DB 작업에 사용됨)
+# * SQLAlchemy의 비동기 세션을 사용하기 위한 도구
+from sqlalchemy.ext.asyncio import AsyncSession
+# - AsyncSession: await를 사용하는 비동기 DB 작업에 사용됨
 
 # * 우리가 만든 CRUD 함수들을 불러온다 (파일 위치: api/cruds/task.py)
 # - 여기에 create_task, update_task 같은 실제 DB 작업 함수가 정의되어 있음
@@ -22,7 +21,7 @@ import api.cruds.task as task_crud
 
 # * DB 세션을 자동으로 가져오기 위한 함수 (파일 위치: api/db.py)
 # - FastAPI에서 Depends로 연결할 수 있게 준비해둔 함수
-# - 이 함수는 비동기 세션이 아닌, 동기 세션을 사용함
+# - 비동기 세션(AsyncSession)을 반환함
 from api.db import get_db
 
 # * 우리가 정의한 데이터 구조를 불러온다 (파일 위치: api/schemas/task.py)
@@ -62,19 +61,20 @@ async def list_tasks():
 # - TaskCreate: 사용자가 보낸 데이터(title만 포함됨)
 # - TaskCreateResponse: 응답할 때 포함할 데이터(id 포함)
 # - db: FastAPI가 get_db() 함수를 통해 자동으로 주입하는 DB 세션 객체
-async def create_task(task_body: task_schema.TaskCreate, db: Session = Depends(get_db)):
-    return task_crud.create_task(db, task_body)
+async def create_task(task_body: task_schema.TaskCreate, db: AsyncSession = Depends(get_db)):
+    return await task_crud.create_task(db, task_body)
     # * crud 모듈의 create_task() 함수를 호출하여 실제 DB에 저장함
     # * 저장 후 생성된 할 일(Task)을 반환하며, 그 안에는 id가 포함됨
     #   (예: TaskCreateResponse(id=1, title="책 읽기"))
     #
-    # * db: get_db() 함수를 통해 생성된 SQLAlchemy 세션이 자동으로 들어옴
+    # * db: get_db() 함수를 통해 생성된 SQLAlchemy 비동기 세션이 자동으로 들어옴
     #   - FastAPI의 Depends를 사용해 '의존성 주입(Dependency Injection)' 방식으로 처리함
     #   - 함수 안에서 직접 DB 연결을 만들지 않아도 되므로 코드가 더 유연하고 테스트하기 쉬워짐
     #   - 테스트 시에는 get_db 함수를 오버라이드해서 가짜 DB나 테스트용 DB를 넣을 수 있음
     #
-    # * 이 구조는 비즈니스 로직(DB 작업)은 crud 모듈에 분리해두고,
-    #   이 함수는 API 요청/응답 처리에 집중하도록 구성된 형태
+    # * 이 구조는 DB 작업(비즈니스 로직)은 crud.py에 따로 만들고,
+    #   이 함수는 요청 받고 응답하는 역할만 담당하도록 나눠서 구성함
+    #   → 코드가 더 깔끔하고 관리하기 쉬워짐
 
 # ------------------------------------------------------------
 # [3] 할 일 수정 (PUT 요청)
