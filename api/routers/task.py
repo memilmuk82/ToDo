@@ -8,7 +8,22 @@
 # ------------------------------------------------------------
 
 # * FastAPI에서 여러 개의 URL 경로를 그룹으로 묶어 관리할 수 있게 해주는 도구
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+# - APIRouter: 기능별로 URL을 나눠 관리할 수 있게 해줌 (예: /tasks, /users 등)
+# - Depends: 다른 함수(예: DB 연결)를 자동으로 실행하고 주입해주는 도구
+
+# * SQLAlchemy의 동기 세션을 사용하기 위한 도구
+from sqlalchemy.orm import Session
+# - Session: DB와 연결된 작업 단위 (add, commit 등 DB 작업에 사용됨)
+
+# * 우리가 만든 CRUD 함수들을 불러온다 (파일 위치: api/cruds/task.py)
+# - 여기에 create_task, update_task 같은 실제 DB 작업 함수가 정의되어 있음
+import api.cruds.task as task_crud
+
+# * DB 세션을 자동으로 가져오기 위한 함수 (파일 위치: api/db.py)
+# - FastAPI에서 Depends로 연결할 수 있게 준비해둔 함수
+# - 이 함수는 비동기 세션이 아닌, 동기 세션을 사용함
+from api.db import get_db
 
 # * 우리가 정의한 데이터 구조를 불러온다 (파일 위치: api/schemas/task.py)
 # - Task: 전체 할 일 데이터를 표현
@@ -40,16 +55,26 @@ async def list_tasks():
 # [2] 할 일 추가 (POST 요청)
 # - 클라이언트가 JSON 형식으로 보낸 데이터(title)를 받아
 #   새로운 할 일을 생성하는 기능 (예: {"title": "책 읽기"})
+# - 이번에는 예시 데이터가 아니라, 실제 DB에 저장하는 구조로 구현함
 # ------------------------------------------------------------
 @router.post("/tasks", response_model=task_schema.TaskCreateResponse)
 # - task_body: 사용자가 보낸 데이터 요청 본문
 # - TaskCreate: 사용자가 보낸 데이터(title만 포함됨)
 # - TaskCreateResponse: 응답할 때 포함할 데이터(id 포함)
-async def create_task(task_body: task_schema.TaskCreate):
-    return task_schema.TaskCreateResponse(id=1, **task_body.model_dump())
-    # * model_dump()는 Pydantic v2에서 dict() 대신 사용하는 메서드
-    # * task_body에 들어 있는 값을 풀어서(id와 함께) 응답으로 전달함
-    # * 지금은 예시이므로 id는 1로 고정해두었음
+# - db: FastAPI가 get_db() 함수를 통해 자동으로 주입하는 DB 세션 객체
+async def create_task(task_body: task_schema.TaskCreate, db: Session = Depends(get_db)):
+    return task_crud.create_task(db, task_body)
+    # * crud 모듈의 create_task() 함수를 호출하여 실제 DB에 저장함
+    # * 저장 후 생성된 할 일(Task)을 반환하며, 그 안에는 id가 포함됨
+    #   (예: TaskCreateResponse(id=1, title="책 읽기"))
+    #
+    # * db: get_db() 함수를 통해 생성된 SQLAlchemy 세션이 자동으로 들어옴
+    #   - FastAPI의 Depends를 사용해 '의존성 주입(Dependency Injection)' 방식으로 처리함
+    #   - 함수 안에서 직접 DB 연결을 만들지 않아도 되므로 코드가 더 유연하고 테스트하기 쉬워짐
+    #   - 테스트 시에는 get_db 함수를 오버라이드해서 가짜 DB나 테스트용 DB를 넣을 수 있음
+    #
+    # * 이 구조는 비즈니스 로직(DB 작업)은 crud 모듈에 분리해두고,
+    #   이 함수는 API 요청/응답 처리에 집중하도록 구성된 형태
 
 # ------------------------------------------------------------
 # [3] 할 일 수정 (PUT 요청)
@@ -63,6 +88,7 @@ async def update_task(task_id: int, task_body: task_schema.TaskCreate):
     return task_schema.TaskCreateResponse(id=task_id, **task_body.model_dump())
     # * id는 수정 대상 번호 그대로 사용
     # * 수정된 title과 함께 응답 구조(TaskCreateResponse)로 반환
+    # * model_dump()는 title 값을 딕셔너리처럼 꺼내주는 함수 (dict() 대신 사용됨)
 
 # ------------------------------------------------------------
 # [4] 할 일 삭제 (DELETE 요청)
