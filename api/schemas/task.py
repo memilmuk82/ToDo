@@ -6,9 +6,12 @@
 # - FastAPI에서는 Pydantic 모델을 사용해 구조를 정의한다.
 # ------------------------------------------------------------
 
-from pydantic import BaseModel, Field
+import datetime  # 날짜와 시간을 다룰 수 있는 파이썬 내장 모듈 (예: 마감일 등 처리에 사용됨)
+
+from pydantic import BaseModel, Field, ConfigDict
 # - BaseModel: 모든 데이터 구조의 기본이 되는 클래스
 # - Field: 각 항목에 기본값, 예시, 설명 등을 붙일 수 있게 해준다
+# - ConfigDict: Pydantic v2부터 모델 설정(예: from_attributes)을 지정할 때 사용
 
 # ------------------------------------------------------------
 # [1] 공통 속성 클래스: TaskBase
@@ -23,6 +26,12 @@ class TaskBase(BaseModel):
     )
     # * title: 할 일의 제목
     # * str | None: 문자열이거나 값이 없을 수도 있음 (입력을 안 해도 에러는 나지 않음)
+
+    due_date: datetime.date | None = Field(None, example="2025-05-15")
+    # * due_date: 할 일의 마감일(언제까지 해야 하는지)
+    # * datetime.date | None: 날짜 형식이거나 없을 수도 있음
+    #     예) 2025-05-15처럼 연-월-일 형식의 문자열을 입력
+    # * 마감일은 선택사항이므로 입력하지 않아도 에러가 나지 않음
 
 # ------------------------------------------------------------
 # [2] 할 일 생성 요청용 모델: TaskCreate
@@ -42,10 +51,9 @@ class TaskCreate(TaskBase):
 class TaskCreateResponse(TaskCreate):
     id: int  # 새로 생성된 할 일의 고유 번호
 
-    class Config:
-        orm_mode = True
-        # * SQLAlchemy 같은 ORM 객체를 이 모델로 자동 변환할 수 있게 설정
-        # * DB에서 가져온 객체를 FastAPI 응답으로 쉽게 바꿔줄 수 있음
+    model_config = ConfigDict(from_attributes=True)
+    # * SQLAlchemy 같은 ORM 객체를 이 모델로 자동 변환할 수 있게 설정
+    # * 기존 orm_mode = True 설정이 Pydantic v2에서는 from_attributes로 대체됨
 
 # ------------------------------------------------------------
 # [4] 할 일 전체 정보를 표현하는 모델: Task
@@ -61,6 +69,6 @@ class Task(TaskBase):
     )
     # * done: True면 완료, False면 미완료를 나타냄
 
-    class Config:
-        orm_mode = True
-        # * 이 설정을 해두면 DB에서 가져온 ORM 객체를 그대로 이 모델에 쓸 수 있다
+    model_config = ConfigDict(from_attributes=True)
+    # * 이 설정을 해두면 DB에서 가져온 ORM 객체를 그대로 이 모델에 쓸 수 있다
+    # * Pydantic v2에서는 class Config + orm_mode 대신 이 방식을 사용함
