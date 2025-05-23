@@ -173,19 +173,6 @@ async def test_done_flag(async_client):
 # 이 테스트를 통해 FastAPI + Pydantic의 날짜 유효성 검사 기능을 실습할 수 있습니다.
 # ------------------------------------------------------------
 
-import pytest
-from starlette import status
-
-# ------------------------------------------------------------
-# @pytest.mark.asyncio
-# - 이 테스트 함수가 비동기 함수임을 pytest에게 알려주는 표시입니다.
-# - 일반 함수가 아니라 `await` 키워드를 사용할 수 있도록 설정합니다.
-# ------------------------------------------------------------
-# @pytest.mark.parametrize(...)
-# - 테스트를 여러 개의 입력 값으로 자동 반복 실행해주는 장치입니다.
-# - input_param: 테스트에 사용할 날짜 문자열
-# - expectation: 해당 입력에 대해 기대하는 응답 상태 코드
-# ------------------------------------------------------------
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "input_param, expectation",  # 매개변수 이름 정의
